@@ -1,0 +1,29 @@
+services:
+  mongo:
+    image: mongo:7
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  uv:
+    build:
+      context: .
+      args:
+        UID: ${UID:-1000}
+        GID: ${GID:-1000}
+    working_dir: /workspace
+    volumes:
+      - .:/workspace
+      - /workspace/.venv
+    stdin_open: true
+    tty: true
+    command: bash
+    depends_on:
+      - mongo
+    environment:
+      FIFTYONE_DATABASE_URI: mongodb://mongo:27017
+    user: appuser
+
+volumes:
+  mongo_data:
