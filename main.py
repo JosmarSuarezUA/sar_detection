@@ -1,11 +1,4 @@
-import sys
-
-
 def main():
-    print("Hello from sar-detection!")
-    print("Python version:", sys.version)
-    
-
-
+    print("Hello world")
 if __name__ == "__main__":
     main()

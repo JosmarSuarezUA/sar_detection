@@ -15,7 +15,8 @@ services:
     working_dir: /workspace
     volumes:
       - .:/workspace
-      - /workspace/.venv
+      - venv:/workspace/.venv
+      - ${DATASETS_PATH:-./datasets}:/workspace/datasets
     stdin_open: true
     tty: true
     command: bash
@@ -27,3 +28,4 @@ services:
 
 volumes:
   mongo_data:
+  venv:
