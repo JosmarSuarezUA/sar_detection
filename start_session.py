@@ -3,7 +3,7 @@ from pathlib import Path
 
 import fiftyone as fo
 
-from sandbox_code.annotation_converter import FiftyOneDatasetManager
+from tools.annotation_converter import FiftyOneDatasetManager
 
 
 def build_parser() -> argparse.ArgumentParser:

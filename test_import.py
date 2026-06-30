@@ -1,4 +1,4 @@
-from sandbox_code.annotation_converter import FiftyOneDatasetManager
+from tools.annotation_converter import FiftyOneDatasetManager
 import fiftyone as fo
 
 splits = {

@@ -22,6 +22,9 @@ services:
     command: bash
     depends_on:
       - mongo
+    # Additionally, you can expose the FiftyOne app port if you want to access it from your host machine
+    ports:
+      - "5151:5151"
     environment:
       FIFTYONE_DATABASE_URI: mongodb://mongo:27017
     user: appuser
