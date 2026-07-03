@@ -1,5 +1,6 @@
 import argparse
 from pathlib import Path
+import json
 
 import fiftyone as fo
 
@@ -30,6 +31,11 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Path to the YOLOv5 dataset YAML file",
     )
+    parser.add_argument(
+        "--splits-json",
+        default=None,
+        help="Path to the splits JSON file",
+    )
     return parser
 
 
@@ -38,21 +44,11 @@ def main() -> None:
     dataset_root = args.dataset_root.resolve()
 
     if args.format == "coco":
-        splits_config = {
-            "train": {
-                "images": str(dataset_root / "images" / "training"),
-                "annotations": str(dataset_root / "annotations" / "coco" / "instances_train.json"),
-            },
-            "val": {
-                "images": str(dataset_root / "images" / "validation"),
-                "annotations": str(dataset_root / "annotations" / "coco" / "instances_val.json"),
-            },
-            "test": {
-                "images": str(dataset_root / "images" / "test"),
-                "annotations": str(dataset_root / "annotations" / "coco" / "instances_test.json"),
-            },
-        }
-        dataset_name = args.dataset_name or "synthetic_bodies_at_sea_coco"
+        #Read json splits
+        splits_json_path = args.splits_json
+        with open(splits_json_path, "r") as f:
+            splits_config = json.load(f)
+        dataset_name = args.dataset_name or None
         manager = FiftyOneDatasetManager(dataset_name=dataset_name)
         manager.import_coco_splits(splits_config, format_type="coco")
     else:
@@ -66,7 +62,6 @@ def main() -> None:
 
     session = fo.launch_app(dataset)
     session.wait()
-
 
 if __name__ == "__main__":
     main()

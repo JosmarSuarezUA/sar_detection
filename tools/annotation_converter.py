@@ -17,7 +17,7 @@ class FiftyOneDatasetManager:
         "voc": fo.types.VOCDetectionDataset,
     }
 
-    def __init__(self, dataset_name: str = "managed_dataset", persistent: bool = False):
+    def __init__(self, dataset_name: str = None, persistent: bool = False):
         self.dataset_name = dataset_name
         self.persistent = persistent
         self.classes: List[str] = []
@@ -31,6 +31,12 @@ class FiftyOneDatasetManager:
         if self._dataset is None:
             self._dataset = fo.Dataset(name=self.dataset_name, persistent=self.persistent)
         return self._dataset
+    
+    def set_dataset(self, dataset: fo.Dataset) -> None:
+        """Sets the underlying FiftyOne dataset instance."""
+        self._dataset = dataset
+        self.dataset_name = dataset.name
+        self.classes = sorted(list(dataset.distinct("detections.detections.label")))
 
     @property
     def sample_count(self) -> int:
@@ -198,4 +204,4 @@ class FiftyOneDatasetManager:
     #     self.dataset.default_classes = self.classes
     #     return self
 
-    ## Bokoblin
+ 
