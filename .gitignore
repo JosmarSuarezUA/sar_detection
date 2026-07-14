@@ -16,7 +16,15 @@ datasets/
 # Local environment overrides
 .env
 .vscode
+.venv
+
 models/
 lightning_logs/
-.venv
+datasets/
+# This is a symbolic link
 datasets
+# This is a folder where I store the splits of the dataset, but it depends a lot on the dataset, so I will ignore it for now
+tools/splits
+
+runs
+da_results

@@ -13,4 +13,5 @@ dependencies = [
     "sahi>=0.11.36",
     "torch>=2.12.0",
     "ultralytics>=8.4.52",
+    "wandb>=0.28.0",
 ]

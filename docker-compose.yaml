@@ -19,6 +19,9 @@ services:
       - ${DATASETS_PATH:-./datasets}:/workspace/datasets
     stdin_open: true
     tty: true
+    # Added entrypoint to sync the virtual environment and turn on wandb settings before starting bash
+    entrypoint: >
+      sh -c "uv sync && uv run yolo settings wandb=True && exec bash"
     command: bash
     depends_on:
       - mongo
@@ -27,7 +30,15 @@ services:
       - "5151:5151"
     environment:
       FIFTYONE_DATABASE_URI: mongodb://mongo:27017
+      WANDB_API_KEY: ${WANDB_API_KEY} # This reads the .env file for the WANDB API key
     user: appuser
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all        # or a specific number, e.g. 1
+              capabilities: [gpu]
 
 volumes:
   mongo_data:
