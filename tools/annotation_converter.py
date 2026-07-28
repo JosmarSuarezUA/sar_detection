@@ -12,6 +12,7 @@ class FiftyOneDatasetManager:
     # Supported format mapping for easier user strings
     FORMAT_MAPPING = {
         "coco": fo.types.COCODetectionDataset,
+        "yolov4": fo.types.YOLOv4Dataset,
         "yolov5": fo.types.YOLOv5Dataset,
         "cvat": fo.types.CVATImageDataset,
         "voc": fo.types.VOCDetectionDataset,
@@ -36,8 +37,21 @@ class FiftyOneDatasetManager:
         """Sets the underlying FiftyOne dataset instance."""
         self._dataset = dataset
         self.dataset_name = dataset.name
-        self.classes = sorted(list(dataset.distinct("detections.detections.label")))
+        self.recalculate_classes()
 
+    def recalculate_classes(self) -> List[str]:
+        """Returns the list of classes in the dataset."""
+        try:
+            if self._dataset and self._dataset.has_field("detections"):
+                self.classes = self.dataset.distinct("detections.detections.label")
+            elif self._dataset and self._dataset.has_field("ground_truth"):
+                self.classes = self.dataset.distinct("ground_truth.detections.label")
+            else:
+                self.classes = []
+        except Exception as e:
+            print(f"Error recalculating classes: {e}")
+            self.classes = []
+        return self.classes
     @property
     def sample_count(self) -> int:
         """Returns total number of samples currently in the dataset."""
@@ -60,26 +74,29 @@ class FiftyOneDatasetManager:
         # Recreate a fresh dataset instance
         self._dataset = fo.Dataset(name=self.dataset_name, persistent=self.persistent)
 
-    def import_coco_splits(self, splits_config: Dict[str, Dict[str, str]], format_type: str = "coco") -> 'FiftyOneDatasetManager':
+    def delete_dataset(self):
+        """Deletes the underlying FiftyOne dataset instance."""
+        if self._dataset and fo.dataset_exists(self._dataset.name):
+            print(f"Deleting dataset '{self._dataset.name}'...")
+            fo.delete_dataset(self._dataset.name)
+            self._dataset = None
+            self.classes = []
+    def import_coco_splits(self, splits_config: Dict[str, Dict[str, str]]) -> 'FiftyOneDatasetManager':
         """
         Imports and merges multiple dataset splits (e.g., train, val, test).
         Format types: 'coco', 'yolov5', etc.
         """
-        dataset_type = self.FORMAT_MAPPING.get(format_type.lower())
-        if not dataset_type:
-            raise ValueError(f"Unsupported import format: {format_type}. Choose from {list(self.FORMAT_MAPPING.keys())}")
-
         # Ensure we start from an empty dataset
         self._reset_dataset()
 
         detected_classes = set()
 
         for split, paths in splits_config.items():
-            print(f"Loading {split} split in {format_type.upper()} format...")
+            print(f"Loading {split} split in {self.FORMAT_MAPPING.get('coco')} format...")
             
             # Dynamically pull the correct arguments based on format requirements
             import_kwargs = {
-                "dataset_type": dataset_type,
+                "dataset_type": self.FORMAT_MAPPING.get('coco'),
                 "data_path": paths.get("images") or paths.get("data_path"),
                 "name": f"temp_{self.dataset_name}_{split}",
             }
@@ -100,6 +117,8 @@ class FiftyOneDatasetManager:
         self.classes = sorted(list(detected_classes))
         if not self.classes:
             self.classes = sorted(list(self.dataset.distinct("detections.detections.label")))
+        if not self.classes:
+            self.classes = sorted(list(self.dataset.distinct("ground_truth.detections.label")))
 
         if not self.classes:
             raise ValueError("No classes could be extracted. Please check your annotation files.")
@@ -112,6 +131,49 @@ class FiftyOneDatasetManager:
         self.dataset.default_classes = self.classes
         return self
     
+    def import_yolov4_splits(self, splits_config: Dict[str, Dict[str, str]]) -> 'FiftyOneDatasetManager':
+        """
+        Imports and merges multiple YOLOv4 dataset splits (e.g., train, val, test).
+        """
+        # Ensure we start from an empty dataset
+        self._reset_dataset()
+        for split, paths in splits_config.items():
+            print(f"Loading {split} split in {self.FORMAT_MAPPING.get('yolov4')} format...")
+            
+            # Dynamically pull the correct arguments based on format requirements
+            import_kwargs = {
+                "dataset_type": self.FORMAT_MAPPING.get('yolov4'),
+                "images_path": paths.get("images_path"),
+                "labels_path": paths.get("labels_path"),
+                "objects_path": paths.get("objects_path"),
+                "name": f"temp_{self.dataset_name}_{split}",
+            }
+            split_dataset = fo.Dataset.from_dir(**import_kwargs)
+            
+            # Extract true original class names if present in metadata
+            # if "classes" in split_dataset.info:
+            #     detected_classes.update(split_dataset.info["classes"])
+            
+            split_dataset.tag_samples(split)
+            self.dataset.merge_samples(split_dataset)
+            split_dataset.delete()
+
+        # Resolve final unified classes
+        # self.classes = sorted(list(detected_classes))
+        # if not self.classes:
+        #     self.classes = sorted(list(self.dataset.distinct("detections.detections.label")))
+
+        # if not self.classes:
+        #     raise ValueError("No classes could be extracted. Please check your annotation files.")
+
+        self.classes = list(self.dataset.default_classes) if self.dataset.default_classes else list(self.dataset.distinct("ground_truth.detections.label"))
+        print(f"\nFinal Class Mapping Verified ({len(self.classes)}):")
+        for idx, cls in enumerate(self.classes):
+            print(f"  ID {idx} -> {cls}")
+
+        # Update core dataset properties for downstream usage
+        self.dataset.default_classes = self.classes
+        return self
     def import_yolov5_yaml(self, yaml_path: str, splits: List[str] = ['train', 'val']) -> 'FiftyOneDatasetManager':
         """
         Imports a YOLOv5 dataset defined by a YAML configuration file.
@@ -124,6 +186,8 @@ class FiftyOneDatasetManager:
         # Start from an empty dataset to avoid mixing previous samples
         self._reset_dataset()
 
+        print(f"Yaml exists: {os.path.exists(yaml_path)}")
+
         for split in splits:
             self.dataset.add_dir(
                 dataset_type=fo.types.YOLOv5Dataset,
@@ -132,8 +196,7 @@ class FiftyOneDatasetManager:
                 tags=split,
             )
 
-        # Update core dataset properties for downstream usage
-        # self.dataset.default_classes = self.classes
+        self.recalculate_classes()
         return self
     
     def generate_yolov5_yaml(self, dataset, output_dir: str) -> None:
@@ -182,6 +245,7 @@ class FiftyOneDatasetManager:
             )
         if(format_type.lower() == "yolov5"):
             self.generate_yolov5_yaml(self.dataset, output_dir)
+            # pass
         print("Export finished successfully!")
 
     # def map_classes(self, class_mapping: Dict[str, str]) -> 'FiftyOneDatasetManager':

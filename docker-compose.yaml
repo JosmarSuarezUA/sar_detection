@@ -12,6 +12,7 @@ services:
       args:
         UID: ${UID:-1000}
         GID: ${GID:-1000}
+    shm_size: 2g
     working_dir: /workspace
     volumes:
       - .:/workspace

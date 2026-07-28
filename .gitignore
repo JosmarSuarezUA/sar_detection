@@ -21,10 +21,13 @@ datasets/
 models/
 lightning_logs/
 datasets/
+
+# Folders with logs of runs
+runs
+da_results
+wandb
 # This is a symbolic link
 datasets
 # This is a folder where I store the splits of the dataset, but it depends a lot on the dataset, so I will ignore it for now
 tools/splits
-
-runs
-da_results
+results_threshold
