@@ -47,6 +47,30 @@ Or directly from your host:
 docker compose exec uv uv run <script_name>.py
 ```
 
+### Confidence Threshold Sweep
+
+Use [confidence_curves.py](confidence_curves.py) to sweep confidence thresholds for a YOLO model, save the summary tables, and optionally log curves to W&B.
+
+Example with W&B artifact download and logging:
+
+```bash
+docker compose exec uv uv run confidence_curves.py    --data-yaml datasets/processed/afo_humans_no_vehicle_060_yolov5/dataset.yaml \
+--train_run_name afo_humans_no_vehicle_060_500_epochs \
+--use-wandb
+```
+
+Example for local evaluation without W&B logging:
+
+```bash
+docker compose exec uv uv run confidence_curves.py \
+	--data-yaml datasets/<your_dataset>.yaml \
+	--run_name <run_name> \
+	--model-path <path/to/model.pt> \
+	--no-use-wandb
+```
+
+Outputs are written under `results_threshold/<run_name>/<split>/` by default.
+
 #### Stop services
 
 ```bash
@@ -116,3 +140,4 @@ docker compose up -d
 - `.env` is ignored by Git, so each developer can use their own values safely
 - If another user on another machine has a different UID/GID, they should update their local `.env`
 - If you see permission errors, rebuild the container after updating `.env`
+
